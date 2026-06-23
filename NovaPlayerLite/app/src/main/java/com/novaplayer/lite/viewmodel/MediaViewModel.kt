@@ -52,7 +52,7 @@ class MediaViewModel : ViewModel() {
         _stats.value = AppStats(dummyVideos.size, dummyMusic.size, "12.5 GB")
     }
 
-    fun toggleFavorite(mediaItem: MediaItem) {
+    fun toggleFavorite() {
         // Logic to toggle favorite
     }
 

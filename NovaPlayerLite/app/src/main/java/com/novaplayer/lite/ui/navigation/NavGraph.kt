@@ -17,7 +17,7 @@ fun NavGraph(
         startDestination = Screen.Home.route
     ) {
         composable(Screen.Home.route) {
-            HomeScreen(viewModel, navController)
+            HomeScreen(viewModel)
         }
         composable(Screen.Videos.route) {
             VideosScreen(viewModel)

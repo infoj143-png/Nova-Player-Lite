@@ -52,7 +52,7 @@ fun MusicScreen(viewModel: MediaViewModel) {
                             Text(text = song.title, style = MaterialTheme.typography.bodyLarge)
                             Text(text = "${song.artist} • ${song.duration}", style = MaterialTheme.typography.bodyMedium)
                         }
-                        IconButton(onClick = { viewModel.toggleFavorite(song) }) {
+                        IconButton(onClick = { viewModel.toggleFavorite() }) {
                             Icon(
                                 if (song.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                                 contentDescription = null,
