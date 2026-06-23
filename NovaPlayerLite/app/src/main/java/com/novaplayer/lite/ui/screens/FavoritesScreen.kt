@@ -5,6 +5,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -45,7 +46,10 @@ fun FavoritesScreen(viewModel: MediaViewModel) {
                 modifier = Modifier.fillMaxSize()
             ) {
                 items(favorites) { item ->
-                    GlassCard(modifier = Modifier.fillMaxWidth()) {
+                    GlassCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = { viewModel.addToRecent(item) }
+                    ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxWidth()
@@ -58,8 +62,23 @@ fun FavoritesScreen(viewModel: MediaViewModel) {
                             )
                             Spacer(modifier = Modifier.width(16.dp))
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(text = item.title, style = MaterialTheme.typography.bodyLarge)
-                                Text(text = "${item.artist} • ${item.type.name}", style = MaterialTheme.typography.bodyMedium)
+                                Text(
+                                    text = item.title,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    maxLines = 1
+                                )
+                                Text(
+                                    text = "${item.artist} • ${item.type.name.lowercase().replaceFirstChar { it.uppercase() }}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color.Gray
+                                )
+                            }
+                            IconButton(onClick = { viewModel.toggleFavorite(item) }) {
+                                Icon(
+                                    Icons.Default.Favorite,
+                                    contentDescription = null,
+                                    tint = Color.Red
+                                )
                             }
                         }
                     }
