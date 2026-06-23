@@ -61,7 +61,7 @@ fun VideosScreen(viewModel: MediaViewModel) {
                             Text(text = video.title, style = MaterialTheme.typography.bodyLarge)
                             Text(text = "${video.artist} • ${video.duration}", style = MaterialTheme.typography.bodyMedium)
                         }
-                        IconButton(onClick = { viewModel.toggleFavorite(video) }) {
+                        IconButton(onClick = { viewModel.toggleFavorite() }) {
                             Icon(
                                 if (video.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                                 contentDescription = null,

@@ -24,7 +24,7 @@ import com.novaplayer.lite.ui.theme.NeonPurple
 import com.novaplayer.lite.viewmodel.MediaViewModel
 
 @Composable
-fun HomeScreen(viewModel: MediaViewModel, navController: NavController) {
+fun HomeScreen(viewModel: MediaViewModel) {
     val stats by viewModel.stats.collectAsState()
     val recentMedia by viewModel.recentMedia.collectAsState()
 

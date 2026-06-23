@@ -25,7 +25,6 @@ private val DarkColorScheme = darkColorScheme(
 
 @Composable
 fun NovaPlayerLiteTheme(
-    darkTheme: Boolean = true, // Always dark for premium feel
     content: @Composable () -> Unit
 ) {
     val colorScheme = DarkColorScheme
