@@ -9,11 +9,17 @@ enum class MediaType {
 
 @Parcelize
 data class MediaItem(
-    val id: String,
+    val id: Long,
     val title: String,
     val artist: String,
-    val duration: String,
+    val duration: Long,
+    val durationText: String,
     val type: MediaType,
+    val uri: String,
+    val size: Long,
+    val sizeText: String,
+    val dateAdded: Long,
+    val path: String,
     val thumbnail: String? = null,
     val isFavorite: Boolean = false
 ) : Parcelable

@@ -64,22 +64,45 @@ fun HomeScreen(viewModel: MediaViewModel) {
                     Text(text = "Songs", style = MaterialTheme.typography.bodyMedium)
                 }
             }
+            Spacer(modifier = Modifier.height(12.dp))
+            GlassCard(modifier = Modifier.fillMaxWidth()) {
+                Text(text = stats.storageUsed, style = MaterialTheme.typography.headlineSmall, color = NeonPink)
+                Text(text = "Storage Used", style = MaterialTheme.typography.bodyMedium)
+            }
         }
 
-        item {
-            Text(text = stringResource(R.string.recent_media), style = MaterialTheme.typography.titleLarge)
-            Spacer(modifier = Modifier.height(12.dp))
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                items(recentMedia) { item ->
-                    GlassCard(modifier = Modifier.width(160.dp)) {
-                        Box(modifier = Modifier.height(90.dp)) {
-                            // Placeholder for thumbnail
-                            Icon(Icons.Default.PlayArrow, contentDescription = null, tint = NeonBlue, modifier = Modifier.fillMaxSize())
+        if (recentMedia.isNotEmpty()) {
+            item {
+                Text(text = stringResource(R.string.recent_media), style = MaterialTheme.typography.titleLarge)
+                Spacer(modifier = Modifier.height(12.dp))
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(recentMedia) { item ->
+                        GlassCard(
+                            modifier = Modifier.width(160.dp),
+                            onClick = { /* Will be implemented with Player */ }
+                        ) {
+                            Box(modifier = Modifier.height(90.dp)) {
+                                Icon(
+                                    Icons.Default.PlayArrow,
+                                    contentDescription = null,
+                                    tint = NeonBlue,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                            Text(
+                                text = item.title,
+                                style = MaterialTheme.typography.bodyLarge,
+                                maxLines = 1
+                            )
+                            Text(
+                                text = item.artist,
+                                style = MaterialTheme.typography.bodyMedium,
+                                maxLines = 1,
+                                color = Color.Gray
+                            )
                         }
-                        Text(text = item.title, style = MaterialTheme.typography.bodyLarge, maxLines = 1)
-                        Text(text = item.artist, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
                     }
                 }
             }
