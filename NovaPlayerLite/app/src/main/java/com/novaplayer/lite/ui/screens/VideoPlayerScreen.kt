@@ -8,6 +8,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -16,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -28,6 +30,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import androidx.navigation.NavController
 import com.novaplayer.lite.data.models.MediaItem
+import com.novaplayer.lite.ui.components.formatTime
 import com.novaplayer.lite.ui.theme.NeonBlue
 import com.novaplayer.lite.viewmodel.MediaViewModel
 import kotlinx.coroutines.delay
@@ -83,8 +86,8 @@ fun VideoPlayerScreen(
     }
 
     LaunchedEffect(showControls) {
-        if (showControls) {
-            delay(3000)
+        if (showControls && isPlaying) {
+            delay(5000)
             showControls = false
         }
     }
@@ -138,7 +141,8 @@ fun VideoPlayerScreen(
         if (playbackState == Player.STATE_BUFFERING) {
             CircularProgressIndicator(
                 modifier = Modifier.align(Alignment.Center),
-                color = NeonBlue
+                color = NeonBlue,
+                strokeWidth = 3.dp
             )
         }
 
@@ -146,22 +150,26 @@ fun VideoPlayerScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.7f)),
+                    .background(Color.Black.copy(alpha = 0.8f)),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(Icons.Default.Error, contentDescription = null, tint = Color.Red, modifier = Modifier.size(48.dp))
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(text = it, color = Color.White, fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(onClick = { navController.popBackStack() }) {
-                        Text("Go Back")
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Button(
+                        onClick = { navController.popBackStack() },
+                        colors = ButtonDefaults.buttonColors(containerColor = NeonBlue)
+                    ) {
+                        Text("Go Back", color = Color.Black)
                     }
                 }
             }
         }
     }
 }
+
 
 @Composable
 fun VideoControls(
@@ -178,14 +186,23 @@ fun VideoControls(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.4f))
-            .padding(16.dp)
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color.Black.copy(alpha = 0.6f), Color.Transparent, Color.Black.copy(alpha = 0.6f))
+                )
+            )
+            .padding(24.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onBack) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.3f))
+            ) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
             }
             Text(
@@ -193,7 +210,7 @@ fun VideoControls(
                 style = MaterialTheme.typography.titleLarge,
                 color = Color.White,
                 maxLines = 1,
-                modifier = Modifier.padding(start = 8.dp)
+                modifier = Modifier.padding(start = 16.dp)
             )
         }
 
@@ -205,32 +222,43 @@ fun VideoControls(
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onBackward) {
-                Icon(Icons.Default.Replay10, contentDescription = "-10s", tint = Color.White, modifier = Modifier.size(36.dp))
+                Icon(Icons.Default.Replay10, contentDescription = "-10s", tint = Color.White, modifier = Modifier.size(42.dp))
             }
-            Spacer(modifier = Modifier.width(32.dp))
-            IconButton(
-                onClick = onPlayPause,
+            Spacer(modifier = Modifier.width(48.dp))
+
+            Box(
                 modifier = Modifier
-                    .size(64.dp)
+                    .size(72.dp)
                     .clip(CircleShape)
-                    .background(NeonBlue.copy(alpha = 0.8f))
+                    .background(NeonBlue.copy(alpha = 0.9f))
+                    .clickable { onPlayPause() },
+                contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    contentDescription = "Play/Pause",
-                    tint = Color.White,
-                    modifier = Modifier.size(40.dp)
-                )
+                Crossfade(targetState = isPlaying, label = "PlayPause") { playing ->
+                    Icon(
+                        if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = "Play/Pause",
+                        tint = Color.Black,
+                        modifier = Modifier.size(44.dp)
+                    )
+                }
             }
-            Spacer(modifier = Modifier.width(32.dp))
+
+            Spacer(modifier = Modifier.width(48.dp))
             IconButton(onClick = onForward) {
-                Icon(Icons.Default.Forward10, contentDescription = "+10s", tint = Color.White, modifier = Modifier.size(36.dp))
+                Icon(Icons.Default.Forward10, contentDescription = "+10s", tint = Color.White, modifier = Modifier.size(42.dp))
             }
         }
 
         Spacer(modifier = Modifier.weight(1f))
 
-        Column(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(Color.Black.copy(alpha = 0.4f))
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+        ) {
             Slider(
                 value = currentPosition.toFloat(),
                 onValueChange = { onSeek(it.toLong()) },
@@ -238,28 +266,16 @@ fun VideoControls(
                 colors = SliderDefaults.colors(
                     thumbColor = NeonBlue,
                     activeTrackColor = NeonBlue,
-                    inactiveTrackColor = Color.White.copy(alpha = 0.3f)
+                    inactiveTrackColor = Color.White.copy(alpha = 0.2f)
                 )
             )
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(text = formatTime(currentPosition), color = Color.White)
-                Text(text = formatTime(duration), color = Color.White)
+                Text(text = formatTime(currentPosition), color = Color.White, style = MaterialTheme.typography.bodySmall)
+                Text(text = formatTime(duration), color = Color.White, style = MaterialTheme.typography.bodySmall)
             }
         }
-    }
-}
-
-fun formatTime(ms: Long): String {
-    val totalSeconds = ms / 1000
-    val hours = totalSeconds / 3600
-    val minutes = (totalSeconds % 3600) / 60
-    val seconds = totalSeconds % 60
-    return if (hours > 0) {
-        "%02d:%02d:%02d".format(hours, minutes, seconds)
-    } else {
-        "%02d:%02d".format(minutes, seconds)
     }
 }

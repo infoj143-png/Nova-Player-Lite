@@ -1,6 +1,8 @@
 package com.novaplayer.lite.ui.navigation
 
 import android.net.Uri
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -17,7 +19,9 @@ fun NavGraph(
 ) {
     NavHost(
         navController = navController,
-        startDestination = Screen.Home.route
+        startDestination = Screen.Home.route,
+        enterTransition = { fadeIn() },
+        exitTransition = { fadeOut() }
     ) {
         composable(Screen.Home.route) {
             HomeScreen(viewModel, navController)

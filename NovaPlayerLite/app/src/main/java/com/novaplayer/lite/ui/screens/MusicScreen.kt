@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.novaplayer.lite.ui.components.GlassCard
 import com.novaplayer.lite.ui.components.GlassSearchBar
+import com.novaplayer.lite.ui.components.NeonBackground
 import com.novaplayer.lite.ui.navigation.Screen
 import com.novaplayer.lite.ui.theme.NeonPurple
 import com.novaplayer.lite.viewmodel.MediaViewModel
@@ -31,105 +32,115 @@ fun MusicScreen(viewModel: MediaViewModel, navController: NavController) {
     val isLoading by viewModel.isScanning.collectAsState()
     var showSortMenu by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+    NeonBackground {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 20.dp)
         ) {
-            Text(text = "Music", style = MaterialTheme.typography.headlineLarge)
-            IconButton(onClick = { showSortMenu = true }) {
-                Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort")
-                DropdownMenu(
-                    expanded = showSortMenu,
-                    onDismissRequest = { showSortMenu = false }
-                ) {
-                    SortOrder.values().forEach { order ->
-                        DropdownMenuItem(
-                            text = { Text(order.name.replace("_", " ")) },
-                            onClick = {
-                                viewModel.setMusicSortOrder(order)
-                                showSortMenu = false
-                            }
-                        )
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        GlassSearchBar(
-            value = searchQuery,
-            onValueChange = { viewModel.setMusicSearchQuery(it) },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        if (isLoading) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = NeonPurple)
-            }
-        } else if (music.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(
-                    text = if (searchQuery.isEmpty()) "No music found on device." else "No music matching search.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    textAlign = TextAlign.Center
-                )
-            }
-        } else {
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxSize()
+            Spacer(modifier = Modifier.height(24.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                items(music) { song ->
-                    GlassCard(
-                        modifier = Modifier.fillMaxWidth(),
-                        onClick = {
-                            val encodedPath = Uri.encode(song.path)
-                            navController.navigate(Screen.AudioPlayer.route.replace("{mediaPath}", encodedPath))
-                        }
+                Text(text = "Music", style = MaterialTheme.typography.headlineLarge)
+                IconButton(onClick = { showSortMenu = true }) {
+                    Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort", tint = NeonPurple)
+                    DropdownMenu(
+                        expanded = showSortMenu,
+                        onDismissRequest = { showSortMenu = false }
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(
-                                Icons.Default.MusicNote,
-                                contentDescription = null,
-                                tint = NeonPurple,
-                                modifier = Modifier.size(40.dp)
+                        SortOrder.values().forEach { order ->
+                            DropdownMenuItem(
+                                text = { Text(order.name.replace("_", " ")) },
+                                onClick = {
+                                    viewModel.setMusicSortOrder(order)
+                                    showSortMenu = false
+                                }
                             )
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = song.title,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    maxLines = 1
-                                )
-                                Text(
-                                    text = "${song.artist} • ${song.durationText}",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Color.Gray
-                                )
-                            }
-                            IconButton(onClick = { viewModel.toggleFavorite(song) }) {
-                                Icon(
-                                    if (song.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                    contentDescription = null,
-                                    tint = if (song.isFavorite) Color.Red else Color.Gray
-                                )
-                            }
                         }
                     }
                 }
-                item { Spacer(modifier = Modifier.height(80.dp)) }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            GlassSearchBar(
+                value = searchQuery,
+                onValueChange = { viewModel.setMusicSearchQuery(it) },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            if (isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = NeonPurple, strokeWidth = 3.dp)
+                }
+            } else if (music.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = if (searchQuery.isEmpty()) "No music found.\nYour collection is waiting." else "No music matching search.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Color.Gray,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            } else {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(music) { song ->
+                        GlassCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            onClick = {
+                                val encodedPath = Uri.encode(song.path)
+                                navController.navigate(Screen.AudioPlayer.route.replace("{mediaPath}", encodedPath))
+                            }
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Box(
+                                    modifier = Modifier.size(50.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Default.MusicNote,
+                                        contentDescription = null,
+                                        tint = NeonPurple,
+                                        modifier = Modifier.size(32.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = song.title,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        maxLines = 1
+                                    )
+                                    Text(
+                                        text = "${song.artist} • ${song.durationText}",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = Color.Gray
+                                    )
+                                }
+                                IconButton(onClick = { viewModel.toggleFavorite(song) }) {
+                                    Icon(
+                                        if (song.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                        contentDescription = null,
+                                        tint = if (song.isFavorite) Color.Red else Color.Gray,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    item { Spacer(modifier = Modifier.height(100.dp)) }
+                }
             }
         }
     }
