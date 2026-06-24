@@ -20,12 +20,18 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.media3.common.MediaItem as Media3Item
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import androidx.navigation.NavController
@@ -46,13 +52,29 @@ fun VideoPlayerScreen(
 
     var isPlaying by remember { mutableStateOf(false) }
     var playbackState by remember { mutableIntStateOf(Player.STATE_IDLE) }
-    var currentPosition by remember { mutableLongStateOf(0L) }
     var duration by remember { mutableLongStateOf(0L) }
+    var isFirstFrameRendered by remember { mutableStateOf(false) }
+    var isFullscreen by remember { mutableStateOf(false) }
     var showControls by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
 
     val exoPlayer = remember {
-        ExoPlayer.Builder(context).build().apply {
+        val renderersFactory = DefaultRenderersFactory(context)
+            .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
+
+        val loadControl = DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                2500, // Min buffer
+                5000, // Max buffer
+                1000, // Buffer for playback
+                1500  // Buffer for playback after rebuffer
+            )
+            .build()
+
+        ExoPlayer.Builder(context)
+            .setRenderersFactory(renderersFactory)
+            .setLoadControl(loadControl)
+            .build().apply {
             mediaItem?.let {
                 setMediaItem(Media3Item.fromUri(it.uri))
                 prepare()
@@ -71,17 +93,14 @@ fun VideoPlayerScreen(
                     }
                 }
 
+                override fun onRenderedFirstFrame() {
+                    isFirstFrameRendered = true
+                }
+
                 override fun onPlayerError(e: PlaybackException) {
                     error = "Failed to play video: ${e.message}"
                 }
             })
-        }
-    }
-
-    LaunchedEffect(exoPlayer) {
-        while (true) {
-            currentPosition = exoPlayer.currentPosition
-            delay(1000)
         }
     }
 
@@ -92,10 +111,32 @@ fun VideoPlayerScreen(
         }
     }
 
-    DisposableEffect(Unit) {
+    val view = LocalView.current
+    DisposableEffect(isFullscreen) {
         val activity = context as? Activity
-        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        val window = activity?.window
+        if (window != null) {
+            val controller = WindowCompat.getInsetsController(window, view)
+            if (isFullscreen) {
+                activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                controller.hide(WindowInsetsCompat.Type.systemBars())
+                controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            } else {
+                activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                controller.show(WindowInsetsCompat.Type.systemBars())
+            }
+        }
+        onDispose {}
+    }
+
+    DisposableEffect(Unit) {
         onDispose {
+            val activity = context as? Activity
+            val window = activity?.window
+            if (window != null) {
+                val controller = WindowCompat.getInsetsController(window, view)
+                controller.show(WindowInsetsCompat.Type.systemBars())
+            }
             activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
             exoPlayer.release()
         }
@@ -126,19 +167,21 @@ fun VideoPlayerScreen(
             exit = fadeOut() + slideOutVertically { it / 2 }
         ) {
             VideoControls(
+                exoPlayer = exoPlayer,
                 isPlaying = isPlaying,
-                currentPosition = currentPosition,
                 duration = duration,
+                isFullscreen = isFullscreen,
                 onPlayPause = { if (isPlaying) exoPlayer.pause() else exoPlayer.play() },
                 onSeek = { exoPlayer.seekTo(it) },
                 onForward = { exoPlayer.seekTo(exoPlayer.currentPosition + 10000) },
                 onBackward = { exoPlayer.seekTo(exoPlayer.currentPosition - 10000) },
+                onFullscreenToggle = { isFullscreen = !isFullscreen },
                 onBack = { navController.popBackStack() },
                 title = mediaItem?.title ?: "Video"
             )
         }
 
-        if (playbackState == Player.STATE_BUFFERING) {
+        if (playbackState == Player.STATE_BUFFERING || (playbackState == Player.STATE_READY && !isFirstFrameRendered)) {
             CircularProgressIndicator(
                 modifier = Modifier.align(Alignment.Center),
                 color = NeonBlue,
@@ -173,13 +216,15 @@ fun VideoPlayerScreen(
 
 @Composable
 fun VideoControls(
+    exoPlayer: ExoPlayer,
     isPlaying: Boolean,
-    currentPosition: Long,
     duration: Long,
+    isFullscreen: Boolean,
     onPlayPause: () -> Unit,
     onSeek: (Long) -> Unit,
     onForward: () -> Unit,
     onBackward: () -> Unit,
+    onFullscreenToggle: () -> Unit,
     onBack: () -> Unit,
     title: String
 ) {
@@ -210,8 +255,20 @@ fun VideoControls(
                 style = MaterialTheme.typography.titleLarge,
                 color = Color.White,
                 maxLines = 1,
-                modifier = Modifier.padding(start = 16.dp)
+                modifier = Modifier.weight(1f).padding(start = 16.dp)
             )
+            IconButton(
+                onClick = onFullscreenToggle,
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.3f))
+            ) {
+                Icon(
+                    if (isFullscreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
+                    contentDescription = "Toggle Fullscreen",
+                    tint = Color.White
+                )
+            }
         }
 
         Spacer(modifier = Modifier.weight(1f))
@@ -252,30 +309,51 @@ fun VideoControls(
 
         Spacer(modifier = Modifier.weight(1f))
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
-                .background(Color.Black.copy(alpha = 0.4f))
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-        ) {
-            Slider(
-                value = currentPosition.toFloat(),
-                onValueChange = { onSeek(it.toLong()) },
-                valueRange = 0f..duration.coerceAtLeast(0L).toFloat(),
-                colors = SliderDefaults.colors(
-                    thumbColor = NeonBlue,
-                    activeTrackColor = NeonBlue,
-                    inactiveTrackColor = Color.White.copy(alpha = 0.2f)
-                )
+        PlaybackProgress(exoPlayer = exoPlayer, duration = duration, onSeek = onSeek)
+    }
+}
+
+@Composable
+fun PlaybackProgress(
+    exoPlayer: ExoPlayer,
+    duration: Long,
+    onSeek: (Long) -> Unit
+) {
+    var currentPosition by remember { mutableLongStateOf(exoPlayer.currentPosition) }
+
+    LaunchedEffect(exoPlayer) {
+        while (true) {
+            currentPosition = exoPlayer.currentPosition
+            delay(1000)
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color.Black.copy(alpha = 0.4f))
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        Slider(
+            value = currentPosition.toFloat(),
+            onValueChange = {
+                currentPosition = it.toLong()
+                onSeek(it.toLong())
+            },
+            valueRange = 0f..duration.coerceAtLeast(0L).toFloat(),
+            colors = SliderDefaults.colors(
+                thumbColor = NeonBlue,
+                activeTrackColor = NeonBlue,
+                inactiveTrackColor = Color.White.copy(alpha = 0.2f)
             )
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(text = formatTime(currentPosition), color = Color.White, style = MaterialTheme.typography.bodySmall)
-                Text(text = formatTime(duration), color = Color.White, style = MaterialTheme.typography.bodySmall)
-            }
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(text = formatTime(currentPosition), color = Color.White, style = MaterialTheme.typography.bodySmall)
+            Text(text = formatTime(duration), color = Color.White, style = MaterialTheme.typography.bodySmall)
         }
     }
 }
