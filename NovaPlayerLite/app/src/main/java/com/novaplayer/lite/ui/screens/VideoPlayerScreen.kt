@@ -14,6 +14,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -54,8 +55,9 @@ fun VideoPlayerScreen(
     var playbackState by remember { mutableIntStateOf(Player.STATE_IDLE) }
     var duration by remember { mutableLongStateOf(0L) }
     var isFirstFrameRendered by remember { mutableStateOf(false) }
-    var isFullscreen by remember { mutableStateOf(false) }
-    var showControls by remember { mutableStateOf(true) }
+    var isFullscreen by rememberSaveable { mutableStateOf(false) }
+    var showControls by rememberSaveable { mutableStateOf(true) }
+    var isLocked by rememberSaveable { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
     val exoPlayer = remember {
@@ -122,7 +124,7 @@ fun VideoPlayerScreen(
                 controller.hide(WindowInsetsCompat.Type.systemBars())
                 controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             } else {
-                activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
                 controller.show(WindowInsetsCompat.Type.systemBars())
             }
         }
@@ -149,7 +151,7 @@ fun VideoPlayerScreen(
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
-            ) { showControls = !showControls }
+            ) { if (!isLocked) showControls = !showControls }
     ) {
         AndroidView(
             factory = {
@@ -162,7 +164,7 @@ fun VideoPlayerScreen(
         )
 
         AnimatedVisibility(
-            visible = showControls,
+            visible = showControls && !isLocked,
             enter = fadeIn() + slideInVertically { it / 2 },
             exit = fadeOut() + slideOutVertically { it / 2 }
         ) {
@@ -171,14 +173,45 @@ fun VideoPlayerScreen(
                 isPlaying = isPlaying,
                 duration = duration,
                 isFullscreen = isFullscreen,
+                isLocked = isLocked,
                 onPlayPause = { if (isPlaying) exoPlayer.pause() else exoPlayer.play() },
                 onSeek = { exoPlayer.seekTo(it) },
                 onForward = { exoPlayer.seekTo(exoPlayer.currentPosition + 10000) },
                 onBackward = { exoPlayer.seekTo(exoPlayer.currentPosition - 10000) },
                 onFullscreenToggle = { isFullscreen = !isFullscreen },
+                onLockToggle = { isLocked = !isLocked },
                 onBack = { navController.popBackStack() },
                 title = mediaItem?.title ?: "Video"
             )
+        }
+
+        // Floating Unlock Button when locked
+        AnimatedVisibility(
+            visible = isLocked,
+            enter = fadeIn(),
+            exit = fadeOut()
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                IconButton(
+                    onClick = { isLocked = false },
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clip(CircleShape)
+                        .background(Color.Black.copy(alpha = 0.5f))
+                ) {
+                    Icon(
+                        Icons.Default.LockOpen,
+                        contentDescription = "Unlock",
+                        tint = NeonBlue,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+            }
         }
 
         if (playbackState == Player.STATE_BUFFERING || (playbackState == Player.STATE_READY && !isFirstFrameRendered)) {
@@ -220,11 +253,13 @@ fun VideoControls(
     isPlaying: Boolean,
     duration: Long,
     isFullscreen: Boolean,
+    isLocked: Boolean,
     onPlayPause: () -> Unit,
     onSeek: (Long) -> Unit,
     onForward: () -> Unit,
     onBackward: () -> Unit,
     onFullscreenToggle: () -> Unit,
+    onLockToggle: () -> Unit,
     onBack: () -> Unit,
     title: String
 ) {
@@ -257,6 +292,19 @@ fun VideoControls(
                 maxLines = 1,
                 modifier = Modifier.weight(1f).padding(start = 16.dp)
             )
+            IconButton(
+                onClick = onLockToggle,
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.3f))
+            ) {
+                Icon(
+                    if (isLocked) Icons.Default.Lock else Icons.Default.LockOpen,
+                    contentDescription = "Toggle Lock",
+                    tint = Color.White
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
             IconButton(
                 onClick = onFullscreenToggle,
                 modifier = Modifier
