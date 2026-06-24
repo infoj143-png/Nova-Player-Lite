@@ -81,15 +81,18 @@ fun MainLayout() {
         Screen.Settings to (Icons.Default.Settings to "Settings")
     )
 
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentDestination = navBackStackEntry?.destination
+    val showBottomBar = currentDestination?.hierarchy?.none { it.route?.startsWith("video_player") == true } == true
+
     Scaffold(
         bottomBar = {
-            NavigationBar(
-                containerColor = Color.Transparent,
-                contentColor = Color.White
-            ) {
-                val navBackStackEntry by navController.currentBackStackEntryAsState()
-                val currentDestination = navBackStackEntry?.destination
-                items.forEach { (screen, iconTitle) ->
+            if (showBottomBar) {
+                NavigationBar(
+                    containerColor = Color.Transparent,
+                    contentColor = Color.White
+                ) {
+                    items.forEach { (screen, iconTitle) ->
                     val (icon, title) = iconTitle
                     NavigationBarItem(
                         icon = { Icon(icon, contentDescription = title) },
@@ -105,11 +108,12 @@ fun MainLayout() {
                             }
                         },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.primary,
-                            unselectedIconColor = Color.Gray,
-                            indicatorColor = Color.Transparent
+                                selectedIconColor = MaterialTheme.colorScheme.primary,
+                                unselectedIconColor = Color.Gray,
+                                indicatorColor = Color.Transparent
+                            )
                         )
-                    )
+                    }
                 }
             }
         }
