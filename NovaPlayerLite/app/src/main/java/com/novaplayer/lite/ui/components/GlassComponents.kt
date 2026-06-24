@@ -19,6 +19,7 @@ import com.novaplayer.lite.ui.theme.GlassWhite
 fun GlassCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
+    padding: androidx.compose.ui.unit.Dp = 20.dp,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Box(
@@ -39,7 +40,7 @@ fun GlassCard(
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
     ) {
         Column(
-            modifier = Modifier.padding(20.dp),
+            modifier = Modifier.padding(padding),
             content = content
         )
     }

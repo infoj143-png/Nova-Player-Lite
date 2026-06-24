@@ -22,7 +22,9 @@ data class MediaItem(
     val path: String,
     val thumbnail: String? = null,
     val isFavorite: Boolean = false
-) : Parcelable
+) : Parcelable {
+    companion object
+}
 
 data class AppStats(
     val totalVideos: Int,

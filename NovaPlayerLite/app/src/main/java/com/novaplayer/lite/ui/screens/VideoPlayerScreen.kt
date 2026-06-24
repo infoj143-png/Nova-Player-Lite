@@ -1,10 +1,14 @@
 package com.novaplayer.lite.ui.screens
 
 import android.app.Activity
+import android.content.Context
 import android.content.pm.ActivityInfo
+import android.media.AudioManager
+import android.view.WindowManager
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -20,6 +24,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
@@ -38,9 +45,13 @@ import androidx.media3.ui.PlayerView
 import androidx.navigation.NavController
 import com.novaplayer.lite.data.models.MediaItem
 import com.novaplayer.lite.ui.components.formatTime
+import androidx.lifecycle.viewModelScope
 import com.novaplayer.lite.ui.theme.NeonBlue
 import com.novaplayer.lite.viewmodel.MediaViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 @Composable
 fun VideoPlayerScreen(
@@ -59,6 +70,15 @@ fun VideoPlayerScreen(
     var showControls by rememberSaveable { mutableStateOf(true) }
     var isLocked by rememberSaveable { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+
+    // Gesture States
+    var gestureType by remember { mutableStateOf<String?>(null) } // "volume" or "brightness"
+    var gestureValue by remember { mutableFloatStateOf(0f) }
+    var showGestureOverlay by remember { mutableStateOf(false) }
+    var gestureJob by remember { mutableStateOf<Job?>(null) }
+
+    val audioManager = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
+    val activity = context as? Activity
 
     val exoPlayer = remember {
         val renderersFactory = DefaultRenderersFactory(context)
@@ -148,6 +168,55 @@ fun VideoPlayerScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
+            .pointerInput(isLocked) {
+                if (!isLocked) {
+                    detectVerticalDragGestures(
+                        onDragStart = { offset ->
+                            gestureJob?.cancel()
+                            val isRightSide = offset.x > (size.width / 2)
+                            gestureType = if (isRightSide) "volume" else "brightness"
+
+                            if (gestureType == "volume") {
+                                val currentVol = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+                                val maxVol = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                                gestureValue = (currentVol.toFloat() / maxVol * 100f)
+                            } else {
+                                val lp = activity?.window?.attributes
+                                var currentBrightness = lp?.screenBrightness ?: -1f
+                                if (currentBrightness < 0) currentBrightness = 0.5f
+                                gestureValue = currentBrightness * 100f
+                            }
+                            showGestureOverlay = true
+                        },
+                        onDragEnd = {
+                            gestureJob?.cancel()
+                            gestureJob = viewModel.viewModelScope.launch {
+                                delay(1000)
+                                showGestureOverlay = false
+                                gestureType = null
+                            }
+                        },
+                        onVerticalDrag = { change, dragAmount ->
+                            change.consume()
+                            val sensitivity = 0.2f
+                            val delta = -(dragAmount * sensitivity)
+                            gestureValue = (gestureValue + delta).coerceIn(0f, 100f)
+
+                            if (gestureType == "volume") {
+                                val maxVol = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                                val newVol = (gestureValue / 100f * maxVol).roundToInt()
+                                audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, newVol, 0)
+                            } else {
+                                activity?.window?.let { window ->
+                                    val lp = window.attributes
+                                    lp.screenBrightness = gestureValue / 100f
+                                    window.attributes = lp
+                                }
+                            }
+                        }
+                    )
+                }
+            }
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
@@ -212,6 +281,20 @@ fun VideoPlayerScreen(
                     )
                 }
             }
+        }
+
+        // Gesture Overlay
+        AnimatedVisibility(
+            visible = showGestureOverlay,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.Center)
+        ) {
+            GestureOverlay(
+                icon = if (gestureType == "volume") Icons.Default.VolumeUp else Icons.Default.BrightnessMedium,
+                value = gestureValue.roundToInt(),
+                label = if (gestureType == "volume") "Volume" else "Brightness"
+            )
         }
 
         if (playbackState == Player.STATE_BUFFERING || (playbackState == Player.STATE_READY && !isFirstFrameRendered)) {
@@ -358,6 +441,26 @@ fun VideoControls(
         Spacer(modifier = Modifier.weight(1f))
 
         PlaybackProgress(exoPlayer = exoPlayer, duration = duration, onSeek = onSeek)
+    }
+}
+
+@Composable
+fun GestureOverlay(icon: ImageVector, value: Int, label: String) {
+    Surface(
+        color = Color.Black.copy(alpha = 0.7f),
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.size(120.dp)
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Icon(icon, contentDescription = null, tint = NeonBlue, modifier = Modifier.size(48.dp))
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(text = "$value%", color = Color.White, fontWeight = FontWeight.Bold)
+            Text(text = label, color = Color.Gray, style = MaterialTheme.typography.labelSmall)
+        }
     }
 }
 

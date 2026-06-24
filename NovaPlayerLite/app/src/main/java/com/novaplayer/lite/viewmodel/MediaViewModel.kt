@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
+import org.json.JSONObject
 
 enum class SortOrder {
     NAME, DATE_ADDED, SIZE, DURATION
@@ -47,6 +48,9 @@ class MediaViewModel : ViewModel() {
     private val _musicSortOrder = MutableStateFlow(SortOrder.DATE_ADDED)
     val musicSortOrder = _musicSortOrder.asStateFlow()
 
+    private val _isVideoGridView = MutableStateFlow(false)
+    val isVideoGridView = _isVideoGridView.asStateFlow()
+
     val filteredVideos = combine(_videos, _videoSearchQuery, _videoSortOrder) { videos, query, sort ->
         videos.filter { it.title.contains(query, ignoreCase = true) }
             .let { sortMedia(it, sort) }
@@ -68,7 +72,9 @@ class MediaViewModel : ViewModel() {
     fun initPrefs(context: Context) {
         if (sharedPreferences == null) {
             sharedPreferences = context.getSharedPreferences("NovaPlayerPrefs", Context.MODE_PRIVATE)
+            _isVideoGridView.value = sharedPreferences?.getBoolean("video_grid_view", false) ?: false
             loadFavorites()
+            loadCachedMedia()
             loadRecent()
         }
     }
@@ -93,6 +99,7 @@ class MediaViewModel : ViewModel() {
 
                 updateStats(videosWithFavs, musicWithFavs)
                 updateFavoritesList()
+                saveMediaToCache(videosWithFavs, musicWithFavs)
                 loadRecent() // Refresh recent list with full items
             } catch (e: Exception) {
                 _errorMessage.value = "Failed to scan media: ${e.message}"
@@ -115,6 +122,11 @@ class MediaViewModel : ViewModel() {
     fun setMusicSearchQuery(query: String) { _musicSearchQuery.value = query }
     fun setVideoSortOrder(sortOrder: SortOrder) { _videoSortOrder.value = sortOrder }
     fun setMusicSortOrder(sortOrder: SortOrder) { _musicSortOrder.value = sortOrder }
+
+    fun toggleVideoLayout() {
+        _isVideoGridView.value = !_isVideoGridView.value
+        sharedPreferences?.edit()?.putBoolean("video_grid_view", _isVideoGridView.value)?.apply()
+    }
 
     fun getMediaByPath(path: String): MediaItem? {
         return (_videos.value + _music.value).find { it.path == path }
@@ -206,5 +218,89 @@ class MediaViewModel : ViewModel() {
     fun clearRecent() {
         _recentMedia.value = emptyList()
         sharedPreferences?.edit()?.remove("recent_ids")?.apply()
+    }
+
+    private fun saveMediaToCache(videos: List<MediaItem>, music: List<MediaItem>) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val videosJson = JSONArray()
+            videos.forEach { videosJson.put(it.toJson()) }
+
+            val musicJson = JSONArray()
+            music.forEach { musicJson.put(it.toJson()) }
+
+            sharedPreferences?.edit()?.apply {
+                putString("cached_videos", videosJson.toString())
+                putString("cached_music", musicJson.toString())
+                apply()
+            }
+        }
+    }
+
+    private fun loadCachedMedia() {
+        val videosJsonStr = sharedPreferences?.getString("cached_videos", null)
+        val musicJsonStr = sharedPreferences?.getString("cached_music", null)
+
+        if (videosJsonStr != null) {
+            val videos = mutableListOf<MediaItem>()
+            val jsonArray = JSONArray(videosJsonStr)
+            for (i in 0 until jsonArray.length()) {
+                MediaItem.fromJson(jsonArray.getJSONObject(i))?.let { videos.add(it) }
+            }
+            _videos.value = videos
+        }
+
+        if (musicJsonStr != null) {
+            val music = mutableListOf<MediaItem>()
+            val jsonArray = JSONArray(musicJsonStr)
+            for (i in 0 until jsonArray.length()) {
+                MediaItem.fromJson(jsonArray.getJSONObject(i))?.let { music.add(it) }
+            }
+            _music.value = music
+        }
+
+        if (_videos.value.isNotEmpty() || _music.value.isNotEmpty()) {
+            updateStats(_videos.value, _music.value)
+            updateFavoritesList()
+        }
+    }
+}
+
+private fun MediaItem.toJson(): JSONObject {
+    return JSONObject().apply {
+        put("id", id)
+        put("title", title)
+        put("artist", artist)
+        put("duration", duration)
+        put("durationText", durationText)
+        put("type", type.name)
+        put("uri", uri)
+        put("size", size)
+        put("sizeText", sizeText)
+        put("dateAdded", dateAdded)
+        put("path", path)
+        put("thumbnail", thumbnail)
+        put("isFavorite", isFavorite)
+    }
+}
+
+private fun MediaItem.Companion.fromJson(json: JSONObject): MediaItem? {
+    return try {
+        MediaItem(
+            id = json.getLong("id"),
+            title = json.getString("title"),
+            artist = json.getString("artist"),
+            duration = json.getLong("duration"),
+            durationText = json.getString("durationText"),
+            type = MediaType.valueOf(json.getString("type")),
+            uri = json.getString("uri"),
+            size = json.getLong("size"),
+            sizeText = json.getString("sizeText"),
+            dateAdded = json.getLong("dateAdded"),
+            path = json.getString("path"),
+            thumbnail = if (json.isNull("thumbnail")) null else json.getString("thumbnail"),
+            isFavorite = json.optBoolean("isFavorite", false)
+        )
+    } catch (e: Exception) {
+        null
     }
 }

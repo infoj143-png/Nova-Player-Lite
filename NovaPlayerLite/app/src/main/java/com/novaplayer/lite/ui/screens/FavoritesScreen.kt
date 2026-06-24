@@ -1,5 +1,6 @@
 package com.novaplayer.lite.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -13,9 +14,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import android.net.Uri
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.novaplayer.lite.data.models.MediaType
 import com.novaplayer.lite.ui.components.GlassCard
 import com.novaplayer.lite.ui.components.NeonBackground
@@ -77,14 +80,24 @@ fun FavoritesScreen(viewModel: MediaViewModel, navController: NavController) {
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Box(
-                                    modifier = Modifier.size(50.dp),
+                                    modifier = Modifier
+                                        .size(80.dp, 50.dp)
+                                        .background(Color.Black.copy(alpha = 0.3f), MaterialTheme.shapes.small),
                                     contentAlignment = Alignment.Center
                                 ) {
+                                    if (item.type == MediaType.VIDEO && item.thumbnail != null) {
+                                        AsyncImage(
+                                            model = item.thumbnail,
+                                            contentDescription = null,
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                    }
                                     Icon(
                                         Icons.Default.Favorite,
                                         contentDescription = null,
-                                        tint = NeonPink,
-                                        modifier = Modifier.size(32.dp)
+                                        tint = NeonPink.copy(alpha = 0.7f),
+                                        modifier = Modifier.size(24.dp)
                                     )
                                 }
                                 Spacer(modifier = Modifier.width(16.dp))
