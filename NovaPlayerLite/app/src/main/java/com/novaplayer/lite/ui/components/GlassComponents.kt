@@ -7,9 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -26,7 +24,11 @@ fun GlassCard(
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(24.dp))
-            .background(GlassWhite)
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(GlassWhite, Color.Transparent)
+                )
+            )
             .border(
                 width = 1.dp,
                 brush = Brush.linearGradient(
@@ -55,13 +57,13 @@ fun NeonButton(
         modifier = modifier
             .height(56.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = color.copy(alpha = 0.2f),
+            containerColor = color.copy(alpha = 0.15f),
             contentColor = color
         ),
-        shape = RoundedCornerShape(16.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.5f))
+        shape = RoundedCornerShape(20.dp),
+        border = androidx.compose.foundation.BorderStroke(1.5.dp, color.copy(alpha = 0.4f))
     ) {
-        Text(text = text, style = MaterialTheme.typography.labelLarge)
+        Text(text = text, style = MaterialTheme.typography.titleMedium)
     }
 }
 
@@ -76,15 +78,27 @@ fun GlassSearchBar(
         onValueChange = onValueChange,
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(GlassWhite),
-        placeholder = { Text("Search...", color = Color.Gray) },
+        placeholder = { Text("Search your media...", color = Color.Gray) },
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = GlassStroke,
             unfocusedBorderColor = Color.Transparent,
             cursorColor = Color.White
         ),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(20.dp),
         singleLine = true
     )
+}
+
+fun formatTime(ms: Long): String {
+    val totalSeconds = ms / 1000
+    val hours = totalSeconds / 3600
+    val minutes = (totalSeconds % 3600) / 60
+    val seconds = totalSeconds % 60
+    return if (hours > 0) {
+        "%02d:%02d:%02d".format(hours, minutes, seconds)
+    } else {
+        "%02d:%02d".format(minutes, seconds)
+    }
 }

@@ -2,6 +2,8 @@ package com.novaplayer.lite.ui.screens
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -25,7 +28,9 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.navigation.NavController
 import com.novaplayer.lite.data.models.MediaItem
+import com.novaplayer.lite.ui.components.formatTime
 import com.novaplayer.lite.ui.theme.NeonPurple
+import com.novaplayer.lite.ui.theme.BackgroundDark
 import com.novaplayer.lite.viewmodel.MediaViewModel
 import kotlinx.coroutines.delay
 
@@ -87,10 +92,10 @@ fun AudioPlayerScreen(
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    colors = listOf(Color(0xFF1A1A2E), Color(0xFF0F0C29))
+                    colors = listOf(BackgroundDark, Color(0xFF1A0B2E))
                 )
             )
-            .padding(24.dp)
+            .padding(28.dp)
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -101,26 +106,31 @@ fun AudioPlayerScreen(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = { navController.popBackStack() }) {
+                IconButton(
+                    onClick = { navController.popBackStack() },
+                    modifier = Modifier.clip(CircleShape).background(Color.White.copy(alpha = 0.05f))
+                ) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                 }
                 Text(
                     text = "Now Playing",
                     style = MaterialTheme.typography.titleMedium,
-                    color = Color.White,
+                    color = Color.Gray,
                     modifier = Modifier.weight(1f),
                     textAlign = TextAlign.Center
                 )
-                Spacer(modifier = Modifier.width(48.dp)) // To balance the back button
+                Spacer(modifier = Modifier.width(48.dp))
             }
 
-            // Album Art Placeholder
+            // Redesigned Album Art with Glow
             Box(
                 modifier = Modifier
-                    .size(300.dp)
-                    .clip(RoundedCornerShape(32.dp))
+                    .size(320.dp)
+                    .shadow(elevation = 30.dp, shape = RoundedCornerShape(40.dp), ambientColor = NeonPurple, spotColor = NeonPurple)
+                    .clip(RoundedCornerShape(40.dp))
                     .background(Color.White.copy(alpha = 0.05f))
-                    .padding(40.dp),
+                    .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(40.dp))
+                    .padding(50.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -129,6 +139,16 @@ fun AudioPlayerScreen(
                     tint = NeonPurple,
                     modifier = Modifier.fillMaxSize()
                 )
+                // Subtle overlay glow
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(NeonPurple.copy(alpha = 0.1f), Color.Transparent)
+                            )
+                        )
+                )
             }
 
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -136,10 +156,11 @@ fun AudioPlayerScreen(
                     text = mediaItem?.title ?: "Unknown Track",
                     style = MaterialTheme.typography.headlineMedium,
                     color = Color.White,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.ExtraBold,
                     textAlign = TextAlign.Center,
                     maxLines = 1
                 )
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = mediaItem?.artist ?: "Unknown Artist",
                     style = MaterialTheme.typography.bodyLarge,
@@ -157,11 +178,11 @@ fun AudioPlayerScreen(
                     colors = SliderDefaults.colors(
                         thumbColor = NeonPurple,
                         activeTrackColor = NeonPurple,
-                        inactiveTrackColor = Color.White.copy(alpha = 0.2f)
+                        inactiveTrackColor = Color.White.copy(alpha = 0.1f)
                     )
                 )
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(text = formatTime(currentPosition), color = Color.Gray, style = MaterialTheme.typography.bodySmall)
@@ -178,19 +199,22 @@ fun AudioPlayerScreen(
                     Icon(Icons.Default.Replay10, contentDescription = "-10s", tint = Color.White, modifier = Modifier.size(36.dp))
                 }
 
-                IconButton(
-                    onClick = { if (isPlaying) exoPlayer.pause() else exoPlayer.play() },
+                Box(
                     modifier = Modifier
-                        .size(80.dp)
+                        .size(84.dp)
                         .clip(CircleShape)
-                        .background(NeonPurple.copy(alpha = 0.8f))
+                        .background(NeonPurple.copy(alpha = 0.9f))
+                        .clickable { if (isPlaying) exoPlayer.pause() else exoPlayer.play() },
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = "Play/Pause",
-                        tint = Color.White,
-                        modifier = Modifier.size(48.dp)
-                    )
+                    Crossfade(targetState = isPlaying, label = "PlayPause") { playing ->
+                        Icon(
+                            if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            contentDescription = "Play/Pause",
+                            tint = Color.Black,
+                            modifier = Modifier.size(48.dp)
+                        )
+                    }
                 }
 
                 IconButton(onClick = { exoPlayer.seekTo(exoPlayer.currentPosition + 10000) }) {
@@ -198,7 +222,7 @@ fun AudioPlayerScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
         }
 
         error?.let {
@@ -212,9 +236,12 @@ fun AudioPlayerScreen(
                     Icon(Icons.Default.Error, contentDescription = null, tint = Color.Red, modifier = Modifier.size(48.dp))
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(text = it, color = Color.White, textAlign = TextAlign.Center)
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(onClick = { navController.popBackStack() }) {
-                        Text("Go Back")
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Button(
+                        onClick = { navController.popBackStack() },
+                        colors = ButtonDefaults.buttonColors(containerColor = NeonPurple)
+                    ) {
+                        Text("Go Back", color = Color.Black)
                     }
                 }
             }

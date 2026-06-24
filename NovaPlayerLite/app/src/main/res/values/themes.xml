@@ -4,4 +4,10 @@
         <item name="android:statusBarColor">#0A0A0B</item>
         <item name="android:windowBackground">#0A0A0B</item>
     </style>
+
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_nova_logo</item>
+        <item name="windowSplashScreenBackground">#0A0A0B</item>
+        <item name="postSplashScreenTheme">@style/Theme.NovaPlayerLite</item>
+    </style>
 </resources>
