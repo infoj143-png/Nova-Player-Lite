@@ -13,14 +13,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import android.net.Uri
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
+import com.novaplayer.lite.data.models.MediaType
 import com.novaplayer.lite.ui.components.GlassCard
+import com.novaplayer.lite.ui.navigation.Screen
 import com.novaplayer.lite.ui.theme.NeonPink
 import com.novaplayer.lite.viewmodel.MediaViewModel
 
 @Composable
-fun FavoritesScreen(viewModel: MediaViewModel) {
+fun FavoritesScreen(viewModel: MediaViewModel, navController: NavController) {
     val favorites by viewModel.favorites.collectAsState()
 
     Column(
@@ -48,7 +52,14 @@ fun FavoritesScreen(viewModel: MediaViewModel) {
                 items(favorites) { item ->
                     GlassCard(
                         modifier = Modifier.fillMaxWidth(),
-                        onClick = { viewModel.addToRecent(item) }
+                        onClick = {
+                            val encodedPath = Uri.encode(item.path)
+                            if (item.type == MediaType.VIDEO) {
+                                navController.navigate(Screen.VideoPlayer.route.replace("{mediaPath}", encodedPath))
+                            } else {
+                                navController.navigate(Screen.AudioPlayer.route.replace("{mediaPath}", encodedPath))
+                            }
+                        }
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,

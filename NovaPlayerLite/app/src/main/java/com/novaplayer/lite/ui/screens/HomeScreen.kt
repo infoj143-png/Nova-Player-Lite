@@ -12,10 +12,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import android.net.Uri
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.novaplayer.lite.R
+import com.novaplayer.lite.data.models.MediaType
+import com.novaplayer.lite.ui.navigation.Screen
 import com.novaplayer.lite.ui.components.GlassCard
 import com.novaplayer.lite.ui.components.NeonButton
 import com.novaplayer.lite.ui.theme.NeonBlue
@@ -24,7 +27,7 @@ import com.novaplayer.lite.ui.theme.NeonPurple
 import com.novaplayer.lite.viewmodel.MediaViewModel
 
 @Composable
-fun HomeScreen(viewModel: MediaViewModel) {
+fun HomeScreen(viewModel: MediaViewModel, navController: NavController) {
     val stats by viewModel.stats.collectAsState()
     val recentMedia by viewModel.recentMedia.collectAsState()
 
@@ -81,7 +84,14 @@ fun HomeScreen(viewModel: MediaViewModel) {
                     items(recentMedia) { item ->
                         GlassCard(
                             modifier = Modifier.width(160.dp),
-                            onClick = { /* Will be implemented with Player */ }
+                            onClick = {
+                                val encodedPath = Uri.encode(item.path)
+                                if (item.type == MediaType.VIDEO) {
+                                    navController.navigate(Screen.VideoPlayer.route.replace("{mediaPath}", encodedPath))
+                                } else {
+                                    navController.navigate(Screen.AudioPlayer.route.replace("{mediaPath}", encodedPath))
+                                }
+                            }
                         ) {
                             Box(modifier = Modifier.height(90.dp)) {
                                 Icon(

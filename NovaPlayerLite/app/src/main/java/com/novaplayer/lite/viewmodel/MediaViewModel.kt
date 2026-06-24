@@ -116,6 +116,10 @@ class MediaViewModel : ViewModel() {
     fun setVideoSortOrder(sortOrder: SortOrder) { _videoSortOrder.value = sortOrder }
     fun setMusicSortOrder(sortOrder: SortOrder) { _musicSortOrder.value = sortOrder }
 
+    fun getMediaByPath(path: String): MediaItem? {
+        return (_videos.value + _music.value).find { it.path == path }
+    }
+
     private fun updateStats(videos: List<MediaItem>, music: List<MediaItem>) {
         val totalSize = videos.sumOf { it.size } + music.sumOf { it.size }
         _stats.value = AppStats(

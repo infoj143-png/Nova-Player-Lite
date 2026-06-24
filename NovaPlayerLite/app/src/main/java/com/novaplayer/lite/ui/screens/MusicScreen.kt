@@ -13,16 +13,19 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import android.net.Uri
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import com.novaplayer.lite.ui.components.GlassCard
 import com.novaplayer.lite.ui.components.GlassSearchBar
+import com.novaplayer.lite.ui.navigation.Screen
 import com.novaplayer.lite.ui.theme.NeonPurple
 import com.novaplayer.lite.viewmodel.MediaViewModel
 import com.novaplayer.lite.viewmodel.SortOrder
 
 @Composable
-fun MusicScreen(viewModel: MediaViewModel) {
+fun MusicScreen(viewModel: MediaViewModel, navController: NavController) {
     val music by viewModel.filteredMusic.collectAsState(initial = emptyList())
     val searchQuery by viewModel.musicSearchQuery.collectAsState()
     val isLoading by viewModel.isScanning.collectAsState()
@@ -88,7 +91,10 @@ fun MusicScreen(viewModel: MediaViewModel) {
                 items(music) { song ->
                     GlassCard(
                         modifier = Modifier.fillMaxWidth(),
-                        onClick = { viewModel.addToRecent(song) }
+                        onClick = {
+                            val encodedPath = Uri.encode(song.path)
+                            navController.navigate(Screen.AudioPlayer.route.replace("{mediaPath}", encodedPath))
+                        }
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
