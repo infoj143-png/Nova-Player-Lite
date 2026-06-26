@@ -69,6 +69,13 @@ class MediaScanner(private val context: Context) {
 
                 val contentUri = ContentUris.withAppendedId(collection, id)
 
+                val thumbnailUri = try {
+                    getThumbnailUri(contentUri, id, path)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    null
+                }
+
                 videoList.add(
                     MediaItem(
                         id = id,
@@ -82,7 +89,7 @@ class MediaScanner(private val context: Context) {
                         sizeText = formatSize(size),
                         dateAdded = dateAdded,
                         path = path,
-                        thumbnailUri = getThumbnailUri(contentUri, id, path)
+                        thumbnailUri = thumbnailUri
                     )
                 )
             }
