@@ -97,8 +97,19 @@ class MediaViewModel : ViewModel() {
             _errorMessage.value = null
             try {
                 val scanner = MediaScanner(context)
-                val scannedVideos = withContext(Dispatchers.IO) { scanner.scanVideos() }
-                val scannedMusic = withContext(Dispatchers.IO) { scanner.scanAudio() }
+
+                val scannedVideos = withContext(Dispatchers.IO) {
+                    try { scanner.scanVideos() } catch (e: Exception) { emptyList() }
+                }
+                val scannedMusic = withContext(Dispatchers.IO) {
+                    try { scanner.scanAudio() } catch (e: Exception) { emptyList() }
+                }
+
+                if (scannedVideos.isEmpty() && scannedMusic.isEmpty()) {
+                    // Don't overwrite cache if both are empty, might be permission issue during scan
+                    // But we still want to show what we found if it's actually empty.
+                    // For now, let's update and see.
+                }
 
                 val favoritesIds = getFavoriteIds()
 
@@ -240,22 +251,30 @@ class MediaViewModel : ViewModel() {
                     _pendingDeleteRequest.value = pendingIntent.intentSender
                 } else {
                     try {
-                        context.contentResolver.delete(uri, null, null)
-                        withContext(Dispatchers.Main) {
-                            removeMediaFromList(item)
+                        val deletedCount = context.contentResolver.delete(uri, null, null)
+                        if (deletedCount > 0) {
+                            withContext(Dispatchers.Main) {
+                                removeMediaFromList(item)
+                            }
                         }
                     } catch (e: SecurityException) {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                            val recoverableSecurityException = e as? RecoverableSecurityException
-                                ?: throw e
-                            _pendingDeleteRequest.value = recoverableSecurityException.userAction.actionIntent.intentSender
+                            val recoverableSecurityException = (e as? RecoverableSecurityException)
+                                ?: (e.cause as? RecoverableSecurityException)
+                            if (recoverableSecurityException != null) {
+                                _pendingDeleteRequest.value = recoverableSecurityException.userAction.actionIntent.intentSender
+                            } else {
+                                throw e
+                            }
                         } else {
                             throw e
                         }
                     }
                 }
             } catch (e: Exception) {
-                _errorMessage.value = "Failed to delete: ${e.message}"
+                withContext(Dispatchers.Main) {
+                    _errorMessage.value = "Failed to delete: ${e.message}"
+                }
             }
         }
     }

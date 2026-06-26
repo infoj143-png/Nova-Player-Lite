@@ -74,7 +74,7 @@ fun MainLayout() {
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        if (permissions.values.all { it }) {
+        if (permissions.values.any { it }) {
             viewModel.scanMedia(context)
         }
     }

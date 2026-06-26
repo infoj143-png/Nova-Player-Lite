@@ -33,13 +33,17 @@ class MediaScanner(private val context: Context) {
             }
         }.toTypedArray()
 
-        val query = context.contentResolver.query(
-            collection,
-            projection,
-            null,
-            null,
-            "${MediaStore.Video.Media.DATE_ADDED} DESC"
-        )
+        val query = try {
+            context.contentResolver.query(
+                collection,
+                projection,
+                null,
+                null,
+                "${MediaStore.Video.Media.DATE_ADDED} DESC"
+            )
+        } catch (e: Exception) {
+            null
+        }
 
         query?.use { cursor ->
             val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media._ID)
@@ -55,36 +59,40 @@ class MediaScanner(private val context: Context) {
             }
 
             while (cursor.moveToNext()) {
-                val id = cursor.getLong(idColumn)
-                val name = cursor.getString(nameColumn) ?: "Unknown"
-                val duration = cursor.getLong(durationColumn)
-                val size = cursor.getLong(sizeColumn)
-                val dateAdded = cursor.getLong(dateColumn)
-                val path = cursor.getString(dataColumn) ?: ""
-                val artist = if (artistColumn != -1) {
-                    cursor.getString(artistColumn) ?: "Unknown"
-                } else {
-                    "Unknown"
-                }
+                try {
+                    val id = cursor.getLong(idColumn)
+                    val name = cursor.getString(nameColumn) ?: "Unknown"
+                    val duration = cursor.getLong(durationColumn)
+                    val size = cursor.getLong(sizeColumn)
+                    val dateAdded = cursor.getLong(dateColumn)
+                    val path = cursor.getString(dataColumn) ?: ""
+                    val artist = if (artistColumn != -1) {
+                        cursor.getString(artistColumn) ?: "Unknown"
+                    } else {
+                        "Unknown"
+                    }
 
-                val contentUri = ContentUris.withAppendedId(collection, id)
+                    val contentUri = ContentUris.withAppendedId(collection, id)
 
-                videoList.add(
-                    MediaItem(
-                        id = id,
-                        title = name,
-                        artist = artist,
-                        duration = duration,
-                        durationText = formatDuration(duration),
-                        type = MediaType.VIDEO,
-                        uri = contentUri.toString(),
-                        size = size,
-                        sizeText = formatSize(size),
-                        dateAdded = dateAdded,
-                        path = path,
-                        thumbnailUri = getThumbnailUri(contentUri, id, path)
+                    videoList.add(
+                        MediaItem(
+                            id = id,
+                            title = name,
+                            artist = artist,
+                            duration = duration,
+                            durationText = formatDuration(duration),
+                            type = MediaType.VIDEO,
+                            uri = contentUri.toString(),
+                            size = size,
+                            sizeText = formatSize(size),
+                            dateAdded = dateAdded,
+                            path = path,
+                            thumbnailUri = try { getThumbnailUri(contentUri, id, path) } catch (e: Exception) { null }
+                        )
                     )
-                )
+                } catch (e: Exception) {
+                    // Skip failed item
+                }
             }
         }
         return videoList
@@ -104,13 +112,17 @@ class MediaScanner(private val context: Context) {
             MediaStore.Audio.Media.ARTIST
         )
 
-        val query = context.contentResolver.query(
-            collection,
-            projection,
-            null,
-            null,
-            "${MediaStore.Audio.Media.DATE_ADDED} DESC"
-        )
+        val query = try {
+            context.contentResolver.query(
+                collection,
+                projection,
+                null,
+                null,
+                "${MediaStore.Audio.Media.DATE_ADDED} DESC"
+            )
+        } catch (e: Exception) {
+            null
+        }
 
         query?.use { cursor ->
             val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
@@ -122,31 +134,35 @@ class MediaScanner(private val context: Context) {
             val artistColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
 
             while (cursor.moveToNext()) {
-                val id = cursor.getLong(idColumn)
-                val name = cursor.getString(nameColumn) ?: "Unknown"
-                val duration = cursor.getLong(durationColumn)
-                val size = cursor.getLong(sizeColumn)
-                val dateAdded = cursor.getLong(dateColumn)
-                val path = cursor.getString(dataColumn) ?: ""
-                val artist = cursor.getString(artistColumn) ?: "Unknown"
+                try {
+                    val id = cursor.getLong(idColumn)
+                    val name = cursor.getString(nameColumn) ?: "Unknown"
+                    val duration = cursor.getLong(durationColumn)
+                    val size = cursor.getLong(sizeColumn)
+                    val dateAdded = cursor.getLong(dateColumn)
+                    val path = cursor.getString(dataColumn) ?: ""
+                    val artist = cursor.getString(artistColumn) ?: "Unknown"
 
-                val contentUri = ContentUris.withAppendedId(collection, id).toString()
+                    val contentUri = ContentUris.withAppendedId(collection, id).toString()
 
-                audioList.add(
-                    MediaItem(
-                        id = id,
-                        title = name,
-                        artist = artist,
-                        duration = duration,
-                        durationText = formatDuration(duration),
-                        type = MediaType.AUDIO,
-                        uri = contentUri,
-                        size = size,
-                        sizeText = formatSize(size),
-                        dateAdded = dateAdded,
-                        path = path
+                    audioList.add(
+                        MediaItem(
+                            id = id,
+                            title = name,
+                            artist = artist,
+                            duration = duration,
+                            durationText = formatDuration(duration),
+                            type = MediaType.AUDIO,
+                            uri = contentUri,
+                            size = size,
+                            sizeText = formatSize(size),
+                            dateAdded = dateAdded,
+                            path = path
+                        )
                     )
-                )
+                } catch (e: Exception) {
+                    // Skip failed item
+                }
             }
         }
         return audioList
