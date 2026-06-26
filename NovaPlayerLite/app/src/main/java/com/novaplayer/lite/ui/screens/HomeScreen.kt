@@ -112,9 +112,9 @@ fun HomeScreen(viewModel: MediaViewModel, navController: NavController) {
                                         .background(Color.Black.copy(alpha = 0.3f)),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    if (item.type == MediaType.VIDEO && item.thumbnail != null) {
+                                    if (item.type == MediaType.VIDEO && item.thumbnailUri != null) {
                                         AsyncImage(
-                                            model = item.thumbnail,
+                                            model = item.thumbnailUri,
                                             contentDescription = null,
                                             modifier = Modifier.fillMaxSize(),
                                             contentScale = ContentScale.Crop

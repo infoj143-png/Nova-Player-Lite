@@ -1,7 +1,12 @@
 package com.novaplayer.lite.viewmodel
 
+import android.app.RecoverableSecurityException
 import android.content.Context
+import android.content.IntentSender
 import android.content.SharedPreferences
+import android.net.Uri
+import android.os.Build
+import android.provider.MediaStore
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.novaplayer.lite.data.MediaScanner
@@ -53,6 +58,9 @@ class MediaViewModel : ViewModel() {
 
     private val _isVideoGridView = MutableStateFlow(false)
     val isVideoGridView = _isVideoGridView.asStateFlow()
+
+    private val _pendingDeleteRequest = MutableStateFlow<IntentSender?>(null)
+    val pendingDeleteRequest = _pendingDeleteRequest.asStateFlow()
 
     val filteredVideos = combine(_videos, _videoSearchQuery, _videoSortOrder) { videos, query, sort ->
         videos.filter { it.title.contains(query, ignoreCase = true) }
@@ -223,6 +231,51 @@ class MediaViewModel : ViewModel() {
         sharedPreferences?.edit()?.remove("recent_ids")?.apply()
     }
 
+    fun deleteMedia(context: Context, item: MediaItem) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val uri = Uri.parse(item.uri)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    val pendingIntent = MediaStore.createDeleteRequest(context.contentResolver, listOf(uri))
+                    _pendingDeleteRequest.value = pendingIntent.intentSender
+                } else {
+                    try {
+                        context.contentResolver.delete(uri, null, null)
+                        withContext(Dispatchers.Main) {
+                            removeMediaFromList(item)
+                        }
+                    } catch (e: SecurityException) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            val recoverableSecurityException = e as? RecoverableSecurityException
+                                ?: throw e
+                            _pendingDeleteRequest.value = recoverableSecurityException.userAction.actionIntent.intentSender
+                        } else {
+                            throw e
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                _errorMessage.value = "Failed to delete: ${e.message}"
+            }
+        }
+    }
+
+    fun removeMediaFromList(item: MediaItem) {
+        if (item.type == MediaType.VIDEO) {
+            _videos.value = _videos.value.filter { it.id != item.id }
+        } else {
+            _music.value = _music.value.filter { it.id != item.id }
+        }
+        _recentMedia.value = _recentMedia.value.filter { it.id != item.id }
+        _favorites.value = _favorites.value.filter { it.id != item.id }
+        updateStats(_videos.value, _music.value)
+        saveMediaToCache(_videos.value, _music.value)
+    }
+
+    fun clearPendingDeleteRequest() {
+        _pendingDeleteRequest.value = null
+    }
+
     private fun saveMediaToCache(videos: List<MediaItem>, music: List<MediaItem>) {
         viewModelScope.launch(Dispatchers.IO) {
             val videosJson = JSONArray()
@@ -281,7 +334,7 @@ private fun MediaItem.toJson(): JSONObject {
         put("sizeText", sizeText)
         put("dateAdded", dateAdded)
         put("path", path)
-        put("thumbnail", thumbnail)
+        put("thumbnailUri", thumbnailUri)
         put("isFavorite", isFavorite)
     }
 }
@@ -300,7 +353,11 @@ private fun MediaItem.Companion.fromJson(json: JSONObject): MediaItem? {
             sizeText = json.getString("sizeText"),
             dateAdded = json.getLong("dateAdded"),
             path = json.getString("path"),
-            thumbnail = if (json.isNull("thumbnail")) null else json.getString("thumbnail"),
+            thumbnailUri = if (json.isNull("thumbnailUri")) {
+                if (json.isNull("thumbnail")) null else json.getString("thumbnail")
+            } else {
+                json.getString("thumbnailUri")
+            },
             isFavorite = json.optBoolean("isFavorite", false)
         )
     } catch (e: Exception) {

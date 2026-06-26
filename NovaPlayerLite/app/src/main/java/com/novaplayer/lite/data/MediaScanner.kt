@@ -76,7 +76,7 @@ class MediaScanner(private val context: Context) {
                         sizeText = formatSize(size),
                         dateAdded = dateAdded,
                         path = path,
-                        thumbnail = contentUri
+                        thumbnailUri = contentUri
                     )
                 )
             }
