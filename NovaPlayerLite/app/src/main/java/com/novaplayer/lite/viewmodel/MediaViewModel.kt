@@ -34,7 +34,10 @@ class MediaViewModel : ViewModel() {
     val recentMedia: StateFlow<List<MediaItem>> = _recentMedia.asStateFlow()
 
     private val _videos = MutableStateFlow<List<MediaItem>>(emptyList())
+    val videos: StateFlow<List<MediaItem>> = _videos.asStateFlow()
+
     private val _music = MutableStateFlow<List<MediaItem>>(emptyList())
+    val audios: StateFlow<List<MediaItem>> = _music.asStateFlow()
 
     private val _videoSearchQuery = MutableStateFlow("")
     val videoSearchQuery = _videoSearchQuery.asStateFlow()

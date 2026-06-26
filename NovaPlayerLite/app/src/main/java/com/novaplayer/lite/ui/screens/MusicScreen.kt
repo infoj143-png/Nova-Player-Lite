@@ -96,8 +96,10 @@ fun MusicScreen(viewModel: MediaViewModel, navController: NavController) {
                         GlassCard(
                             modifier = Modifier.fillMaxWidth(),
                             onClick = {
-                                val encodedPath = Uri.encode(song.path)
-                                navController.navigate(Screen.AudioPlayer.route.replace("{mediaPath}", encodedPath))
+                                val index = viewModel.audios.value.indexOfFirst { it.path == song.path }
+                                if (index != -1) {
+                                    navController.navigate(Screen.AudioPlayer.route.replace("{index}", index.toString()))
+                                }
                             }
                         ) {
                             Row(

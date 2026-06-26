@@ -56,11 +56,15 @@ import kotlin.math.roundToInt
 @Composable
 fun VideoPlayerScreen(
     viewModel: MediaViewModel,
-    mediaPath: String,
+    initialIndex: Int,
     navController: NavController
 ) {
     val context = LocalContext.current
-    val mediaItem = remember(mediaPath) { viewModel.getMediaByPath(mediaPath) }
+    val videos by viewModel.videos.collectAsState()
+    var currentIndex by rememberSaveable { mutableIntStateOf(initialIndex) }
+    val mediaItem = remember(currentIndex, videos) {
+        if (currentIndex in videos.indices) videos[currentIndex] else null
+    }
 
     var isPlaying by remember { mutableStateOf(false) }
     var playbackState by remember { mutableIntStateOf(Player.STATE_IDLE) }
@@ -97,12 +101,6 @@ fun VideoPlayerScreen(
             .setRenderersFactory(renderersFactory)
             .setLoadControl(loadControl)
             .build().apply {
-            mediaItem?.let {
-                setMediaItem(Media3Item.fromUri(it.uri))
-                prepare()
-                playWhenReady = true
-                viewModel.addToRecent(it)
-            }
             addListener(object : Player.Listener {
                 override fun onIsPlayingChanged(playing: Boolean) {
                     isPlaying = playing
@@ -112,6 +110,11 @@ fun VideoPlayerScreen(
                     playbackState = state
                     if (state == Player.STATE_READY) {
                         duration = this@apply.duration
+                    }
+                    if (state == Player.STATE_ENDED) {
+                        if (videos.isNotEmpty()) {
+                            currentIndex = (currentIndex + 1) % videos.size
+                        }
                     }
                 }
 
@@ -123,6 +126,17 @@ fun VideoPlayerScreen(
                     error = "Failed to play video: ${e.message}"
                 }
             })
+        }
+    }
+
+    LaunchedEffect(currentIndex, videos) {
+        if (currentIndex in videos.indices) {
+            val item = videos[currentIndex]
+            exoPlayer.setMediaItem(Media3Item.fromUri(item.uri))
+            exoPlayer.prepare()
+            exoPlayer.play()
+            viewModel.addToRecent(item)
+            isFirstFrameRendered = false
         }
     }
 
@@ -247,6 +261,16 @@ fun VideoPlayerScreen(
                 onSeek = { exoPlayer.seekTo(it) },
                 onForward = { exoPlayer.seekTo(exoPlayer.currentPosition + 10000) },
                 onBackward = { exoPlayer.seekTo(exoPlayer.currentPosition - 10000) },
+                onNext = {
+                    if (videos.isNotEmpty()) {
+                        currentIndex = (currentIndex + 1) % videos.size
+                    }
+                },
+                onPrevious = {
+                    if (videos.isNotEmpty()) {
+                        currentIndex = (currentIndex - 1 + videos.size) % videos.size
+                    }
+                },
                 onFullscreenToggle = { isFullscreen = !isFullscreen },
                 onLockToggle = { isLocked = !isLocked },
                 onBack = { navController.popBackStack() },
@@ -341,6 +365,8 @@ fun VideoControls(
     onSeek: (Long) -> Unit,
     onForward: () -> Unit,
     onBackward: () -> Unit,
+    onNext: () -> Unit,
+    onPrevious: () -> Unit,
     onFullscreenToggle: () -> Unit,
     onLockToggle: () -> Unit,
     onBack: () -> Unit,
@@ -409,10 +435,14 @@ fun VideoControls(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            IconButton(onClick = onPrevious) {
+                Icon(Icons.Default.SkipPrevious, contentDescription = "Previous", tint = Color.White, modifier = Modifier.size(36.dp))
+            }
+            Spacer(modifier = Modifier.width(16.dp))
             IconButton(onClick = onBackward) {
                 Icon(Icons.Default.Replay10, contentDescription = "-10s", tint = Color.White, modifier = Modifier.size(42.dp))
             }
-            Spacer(modifier = Modifier.width(48.dp))
+            Spacer(modifier = Modifier.width(32.dp))
 
             Box(
                 modifier = Modifier
@@ -432,9 +462,13 @@ fun VideoControls(
                 }
             }
 
-            Spacer(modifier = Modifier.width(48.dp))
+            Spacer(modifier = Modifier.width(32.dp))
             IconButton(onClick = onForward) {
                 Icon(Icons.Default.Forward10, contentDescription = "+10s", tint = Color.White, modifier = Modifier.size(42.dp))
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            IconButton(onClick = onNext) {
+                Icon(Icons.Default.SkipNext, contentDescription = "Next", tint = Color.White, modifier = Modifier.size(36.dp))
             }
         }
 

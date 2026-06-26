@@ -12,6 +12,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,11 +38,15 @@ import kotlinx.coroutines.delay
 @Composable
 fun AudioPlayerScreen(
     viewModel: MediaViewModel,
-    mediaPath: String,
+    initialIndex: Int,
     navController: NavController
 ) {
     val context = LocalContext.current
-    val mediaItem = remember(mediaPath) { viewModel.getMediaByPath(mediaPath) }
+    val audios by viewModel.audios.collectAsState()
+    var currentIndex by rememberSaveable { mutableIntStateOf(initialIndex) }
+    val mediaItem = remember(currentIndex, audios) {
+        if (currentIndex in audios.indices) audios[currentIndex] else null
+    }
 
     var isPlaying by remember { mutableStateOf(false) }
     var currentPosition by remember { mutableLongStateOf(0L) }
@@ -50,12 +55,6 @@ fun AudioPlayerScreen(
 
     val exoPlayer = remember {
         ExoPlayer.Builder(context).build().apply {
-            mediaItem?.let {
-                setMediaItem(Media3Item.fromUri(it.uri))
-                prepare()
-                playWhenReady = true
-                viewModel.addToRecent(it)
-            }
             addListener(object : Player.Listener {
                 override fun onIsPlayingChanged(playing: Boolean) {
                     isPlaying = playing
@@ -65,12 +64,27 @@ fun AudioPlayerScreen(
                     if (state == Player.STATE_READY) {
                         duration = this@apply.duration
                     }
+                    if (state == Player.STATE_ENDED) {
+                        if (audios.isNotEmpty()) {
+                            currentIndex = (currentIndex + 1) % audios.size
+                        }
+                    }
                 }
 
                 override fun onPlayerError(e: PlaybackException) {
                     error = "Failed to play audio: ${e.message}"
                 }
             })
+        }
+    }
+
+    LaunchedEffect(currentIndex, audios) {
+        if (currentIndex in audios.indices) {
+            val item = audios[currentIndex]
+            exoPlayer.setMediaItem(Media3Item.fromUri(item.uri))
+            exoPlayer.prepare()
+            exoPlayer.play()
+            viewModel.addToRecent(item)
         }
     }
 
@@ -195,8 +209,16 @@ fun AudioPlayerScreen(
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                IconButton(onClick = {
+                    if (audios.isNotEmpty()) {
+                        currentIndex = (currentIndex - 1 + audios.size) % audios.size
+                    }
+                }) {
+                    Icon(Icons.Default.SkipPrevious, contentDescription = "Previous", tint = Color.White, modifier = Modifier.size(32.dp))
+                }
+
                 IconButton(onClick = { exoPlayer.seekTo(exoPlayer.currentPosition - 10000) }) {
-                    Icon(Icons.Default.Replay10, contentDescription = "-10s", tint = Color.White, modifier = Modifier.size(36.dp))
+                    Icon(Icons.Default.Replay10, contentDescription = "-10s", tint = Color.White, modifier = Modifier.size(32.dp))
                 }
 
                 Box(
@@ -218,7 +240,15 @@ fun AudioPlayerScreen(
                 }
 
                 IconButton(onClick = { exoPlayer.seekTo(exoPlayer.currentPosition + 10000) }) {
-                    Icon(Icons.Default.Forward10, contentDescription = "+10s", tint = Color.White, modifier = Modifier.size(36.dp))
+                    Icon(Icons.Default.Forward10, contentDescription = "+10s", tint = Color.White, modifier = Modifier.size(32.dp))
+                }
+
+                IconButton(onClick = {
+                    if (audios.isNotEmpty()) {
+                        currentIndex = (currentIndex + 1) % audios.size
+                    }
+                }) {
+                    Icon(Icons.Default.SkipNext, contentDescription = "Next", tint = Color.White, modifier = Modifier.size(32.dp))
                 }
             }
 

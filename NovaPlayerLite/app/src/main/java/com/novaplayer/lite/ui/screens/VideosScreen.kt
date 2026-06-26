@@ -122,8 +122,10 @@ fun VideosScreen(viewModel: MediaViewModel, navController: NavController) {
                             VideoGridItem(
                                 video = video,
                                 onClick = {
-                                    val encodedPath = Uri.encode(video.path)
-                                    navController.navigate(Screen.VideoPlayer.route.replace("{mediaPath}", encodedPath))
+                                    val index = viewModel.videos.value.indexOfFirst { it.path == video.path }
+                                    if (index != -1) {
+                                        navController.navigate(Screen.VideoPlayer.route.replace("{index}", index.toString()))
+                                    }
                                 },
                                 onFavoriteToggle = { viewModel.toggleFavorite(video) }
                             )
@@ -139,8 +141,10 @@ fun VideosScreen(viewModel: MediaViewModel, navController: NavController) {
                             VideoListItem(
                                 video = video,
                                 onClick = {
-                                    val encodedPath = Uri.encode(video.path)
-                                    navController.navigate(Screen.VideoPlayer.route.replace("{mediaPath}", encodedPath))
+                                    val index = viewModel.videos.value.indexOfFirst { it.path == video.path }
+                                    if (index != -1) {
+                                        navController.navigate(Screen.VideoPlayer.route.replace("{index}", index.toString()))
+                                    }
                                 },
                                 onFavoriteToggle = { viewModel.toggleFavorite(video) }
                             )
