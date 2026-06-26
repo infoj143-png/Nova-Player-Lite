@@ -92,11 +92,16 @@ fun HomeScreen(viewModel: MediaViewModel, navController: NavController) {
                             GlassCard(
                                 modifier = Modifier.width(170.dp),
                                 onClick = {
-                                    val encodedPath = Uri.encode(item.path)
                                     if (item.type == MediaType.VIDEO) {
-                                        navController.navigate(Screen.VideoPlayer.route.replace("{mediaPath}", encodedPath))
+                                        val index = viewModel.videos.value.indexOfFirst { it.path == item.path }
+                                        if (index != -1) {
+                                            navController.navigate(Screen.VideoPlayer.route.replace("{index}", index.toString()))
+                                        }
                                     } else {
-                                        navController.navigate(Screen.AudioPlayer.route.replace("{mediaPath}", encodedPath))
+                                        val index = viewModel.audios.value.indexOfFirst { it.path == item.path }
+                                        if (index != -1) {
+                                            navController.navigate(Screen.AudioPlayer.route.replace("{index}", index.toString()))
+                                        }
                                     }
                                 }
                             ) {

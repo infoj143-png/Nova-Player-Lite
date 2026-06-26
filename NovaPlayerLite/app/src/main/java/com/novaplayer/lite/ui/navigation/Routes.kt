@@ -6,6 +6,6 @@ sealed class Screen(val route: String) {
     object Music : Screen("music")
     object Favorites : Screen("favorites")
     object Settings : Screen("settings")
-    object VideoPlayer : Screen("video_player/{mediaPath}")
-    object AudioPlayer : Screen("audio_player/{mediaPath}")
+    object VideoPlayer : Screen("video_player/{index}")
+    object AudioPlayer : Screen("audio_player/{index}")
 }

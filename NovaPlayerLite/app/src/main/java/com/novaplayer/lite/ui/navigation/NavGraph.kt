@@ -40,19 +40,17 @@ fun NavGraph(
         }
         composable(
             route = Screen.VideoPlayer.route,
-            arguments = listOf(navArgument("mediaPath") { type = NavType.StringType })
+            arguments = listOf(navArgument("index") { type = NavType.IntType })
         ) { backStackEntry ->
-            val encodedPath = backStackEntry.arguments?.getString("mediaPath") ?: ""
-            val mediaPath = Uri.decode(encodedPath)
-            VideoPlayerScreen(viewModel, mediaPath, navController)
+            val index = backStackEntry.arguments?.getInt("index") ?: 0
+            VideoPlayerScreen(viewModel, index, navController)
         }
         composable(
             route = Screen.AudioPlayer.route,
-            arguments = listOf(navArgument("mediaPath") { type = NavType.StringType })
+            arguments = listOf(navArgument("index") { type = NavType.IntType })
         ) { backStackEntry ->
-            val encodedPath = backStackEntry.arguments?.getString("mediaPath") ?: ""
-            val mediaPath = Uri.decode(encodedPath)
-            AudioPlayerScreen(viewModel, mediaPath, navController)
+            val index = backStackEntry.arguments?.getInt("index") ?: 0
+            AudioPlayerScreen(viewModel, index, navController)
         }
     }
 }
