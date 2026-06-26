@@ -20,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -241,14 +242,8 @@ fun VideoListItem(
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
-                    error = painterResource(id = android.R.drawable.ic_menu_slideshow),
-                    fallback = painterResource(id = android.R.drawable.ic_menu_slideshow)
-                )
-                Icon(
-                    Icons.Default.PlayArrow,
-                    contentDescription = null,
-                    tint = NeonBlue.copy(alpha = 0.7f),
-                    modifier = Modifier.size(24.dp)
+                    error = rememberVectorPainter(Icons.Default.Movie),
+                    fallback = rememberVectorPainter(Icons.Default.Movie)
                 )
             }
             Spacer(modifier = Modifier.width(16.dp))
@@ -313,8 +308,8 @@ fun VideoGridItem(
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
-                    error = painterResource(id = android.R.drawable.ic_menu_slideshow),
-                    fallback = painterResource(id = android.R.drawable.ic_menu_slideshow)
+                    error = rememberVectorPainter(Icons.Default.Movie),
+                    fallback = rememberVectorPainter(Icons.Default.Movie)
                 )
                 Box(
                     modifier = Modifier

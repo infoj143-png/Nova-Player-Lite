@@ -2,10 +2,16 @@ package com.novaplayer.lite.data
 
 import android.content.ContentUris
 import android.content.Context
+import android.graphics.Bitmap
+import android.media.ThumbnailUtils
+import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
+import android.util.Size
 import com.novaplayer.lite.data.models.MediaItem
 import com.novaplayer.lite.data.models.MediaType
+import java.io.File
+import java.io.FileOutputStream
 import java.util.concurrent.TimeUnit
 
 class MediaScanner(private val context: Context) {
@@ -61,7 +67,7 @@ class MediaScanner(private val context: Context) {
                     "Unknown"
                 }
 
-                val contentUri = ContentUris.withAppendedId(collection, id).toString()
+                val contentUri = ContentUris.withAppendedId(collection, id)
 
                 videoList.add(
                     MediaItem(
@@ -71,12 +77,12 @@ class MediaScanner(private val context: Context) {
                         duration = duration,
                         durationText = formatDuration(duration),
                         type = MediaType.VIDEO,
-                        uri = contentUri,
+                        uri = contentUri.toString(),
                         size = size,
                         sizeText = formatSize(size),
                         dateAdded = dateAdded,
                         path = path,
-                        thumbnailUri = contentUri
+                        thumbnailUri = getThumbnailUri(contentUri, id, path)
                     )
                 )
             }
@@ -163,5 +169,36 @@ class MediaScanner(private val context: Context) {
         val units = arrayOf("B", "KB", "MB", "GB", "TB")
         val digitGroups = (Math.log10(size.toDouble()) / Math.log10(1024.0)).toInt()
         return String.format("%.2f %s", size / Math.pow(1024.0, digitGroups.toDouble()), units[digitGroups])
+    }
+
+    private fun getThumbnailUri(videoUri: Uri, id: Long, path: String): String? {
+        val thumbDir = File(context.cacheDir, "thumbnails")
+        if (!thumbDir.exists()) thumbDir.mkdirs()
+
+        val thumbFile = File(thumbDir, "thumb_$id.jpg")
+        if (thumbFile.exists()) return Uri.fromFile(thumbFile).toString()
+
+        return try {
+            val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                context.contentResolver.loadThumbnail(videoUri, Size(320, 240), null)
+            } else {
+                @Suppress("DEPRECATION")
+                MediaStore.Video.Thumbnails.getThumbnail(
+                    context.contentResolver,
+                    id,
+                    MediaStore.Video.Thumbnails.MINI_KIND,
+                    null
+                ) ?: ThumbnailUtils.createVideoThumbnail(path, MediaStore.Video.Thumbnails.MINI_KIND)
+            }
+
+            bitmap?.let {
+                FileOutputStream(thumbFile).use { out ->
+                    it.compress(Bitmap.CompressFormat.JPEG, 85, out)
+                }
+                Uri.fromFile(thumbFile).toString()
+            }
+        } catch (e: Exception) {
+            null
+        }
     }
 }
