@@ -97,8 +97,20 @@ class MediaViewModel : ViewModel() {
             _errorMessage.value = null
             try {
                 val scanner = MediaScanner(context)
-                val scannedVideos = withContext(Dispatchers.IO) { scanner.scanVideos() }
-                val scannedMusic = withContext(Dispatchers.IO) { scanner.scanAudio() }
+
+                val scannedVideos = try {
+                    withContext(Dispatchers.IO) { scanner.scanVideos() }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    emptyList()
+                }
+
+                val scannedMusic = try {
+                    withContext(Dispatchers.IO) { scanner.scanAudio() }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    emptyList()
+                }
 
                 val favoritesIds = getFavoriteIds()
 
@@ -110,7 +122,7 @@ class MediaViewModel : ViewModel() {
 
                 updateStats(videosWithFavs, musicWithFavs)
                 updateFavoritesList()
-                saveMediaToCache(videosWithFavs, musicWithFavs)
+                saveMediaToCache(_videos.value, _music.value)
                 loadRecent() // Refresh recent list with full items
             } catch (e: Exception) {
                 _errorMessage.value = "Failed to scan media: ${e.message}"
