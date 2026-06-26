@@ -20,7 +20,7 @@ data class MediaItem(
     val sizeText: String,
     val dateAdded: Long,
     val path: String,
-    val thumbnail: String? = null,
+    val thumbnailUri: String? = null,
     val isFavorite: Boolean = false
 ) : Parcelable {
     companion object

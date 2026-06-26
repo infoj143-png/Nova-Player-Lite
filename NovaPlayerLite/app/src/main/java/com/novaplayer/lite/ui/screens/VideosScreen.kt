@@ -1,5 +1,10 @@
 package com.novaplayer.lite.ui.screens
 
+import android.app.Activity
+import kotlinx.coroutines.launch
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -9,18 +14,15 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.ViewList
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import android.net.Uri
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -28,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.novaplayer.lite.data.models.MediaItem
 import com.novaplayer.lite.ui.components.GlassCard
 import com.novaplayer.lite.ui.components.GlassSearchBar
@@ -44,13 +47,63 @@ fun VideosScreen(viewModel: MediaViewModel, navController: NavController) {
     val isLoading by viewModel.isScanning.collectAsState()
     val isGridView by viewModel.isVideoGridView.collectAsState()
     var showSortMenu by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    var videoToDelete by remember { mutableStateOf<MediaItem?>(null) }
+    val pendingDeleteRequest by viewModel.pendingDeleteRequest.collectAsState()
+
+    val deleteLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            videoToDelete?.let { viewModel.removeMediaFromList(it) }
+            scope.launch {
+                snackbarHostState.showSnackbar("Video deleted successfully")
+            }
+        }
+        videoToDelete = null
+        viewModel.clearPendingDeleteRequest()
+    }
+
+    LaunchedEffect(pendingDeleteRequest) {
+        pendingDeleteRequest?.let {
+            deleteLauncher.launch(IntentSenderRequest.Builder(it).build())
+        }
+    }
+
+    if (videoToDelete != null && pendingDeleteRequest == null) {
+        AlertDialog(
+            onDismissRequest = { videoToDelete = null },
+            title = { Text("Delete Video") },
+            text = { Text("Are you sure you want to delete this video?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    videoToDelete?.let { viewModel.deleteMedia(context, it) }
+                }) {
+                    Text("Delete", color = Color.Red)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { videoToDelete = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 
     NeonBackground {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 20.dp)
-        ) {
+        Scaffold(
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+            containerColor = Color.Transparent
+        ) { padding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(horizontal = 20.dp)
+            ) {
             Spacer(modifier = Modifier.height(24.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -127,7 +180,8 @@ fun VideosScreen(viewModel: MediaViewModel, navController: NavController) {
                                         navController.navigate(Screen.VideoPlayer.route.replace("{index}", index.toString()))
                                     }
                                 },
-                                onFavoriteToggle = { viewModel.toggleFavorite(video) }
+                                onFavoriteToggle = { viewModel.toggleFavorite(video) },
+                                onDelete = { videoToDelete = video }
                             )
                         }
                     }
@@ -146,7 +200,8 @@ fun VideosScreen(viewModel: MediaViewModel, navController: NavController) {
                                         navController.navigate(Screen.VideoPlayer.route.replace("{index}", index.toString()))
                                     }
                                 },
-                                onFavoriteToggle = { viewModel.toggleFavorite(video) }
+                                onFavoriteToggle = { viewModel.toggleFavorite(video) },
+                                onDelete = { videoToDelete = video }
                             )
                         }
                     }
@@ -155,12 +210,14 @@ fun VideosScreen(viewModel: MediaViewModel, navController: NavController) {
         }
     }
 }
+}
 
 @Composable
 fun VideoListItem(
     video: MediaItem,
     onClick: () -> Unit,
-    onFavoriteToggle: () -> Unit
+    onFavoriteToggle: () -> Unit,
+    onDelete: () -> Unit
 ) {
     GlassCard(
         modifier = Modifier.fillMaxWidth(),
@@ -177,10 +234,15 @@ fun VideoListItem(
                 contentAlignment = Alignment.Center
             ) {
                 AsyncImage(
-                    model = video.thumbnail,
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(video.thumbnailUri)
+                        .crossfade(true)
+                        .build(),
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
+                    contentScale = ContentScale.Crop,
+                    error = painterResource(id = android.R.drawable.ic_menu_slideshow),
+                    fallback = painterResource(id = android.R.drawable.ic_menu_slideshow)
                 )
                 Icon(
                     Icons.Default.PlayArrow,
@@ -211,6 +273,14 @@ fun VideoListItem(
                     modifier = Modifier.size(24.dp)
                 )
             }
+            IconButton(onClick = onDelete) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = "Delete",
+                    tint = Color.Gray,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
         }
     }
 }
@@ -219,7 +289,8 @@ fun VideoListItem(
 fun VideoGridItem(
     video: MediaItem,
     onClick: () -> Unit,
-    onFavoriteToggle: () -> Unit
+    onFavoriteToggle: () -> Unit,
+    onDelete: () -> Unit
 ) {
     GlassCard(
         modifier = Modifier.fillMaxWidth(),
@@ -235,10 +306,15 @@ fun VideoGridItem(
                 contentAlignment = Alignment.Center
             ) {
                 AsyncImage(
-                    model = video.thumbnail,
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(video.thumbnailUri)
+                        .crossfade(true)
+                        .build(),
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
+                    contentScale = ContentScale.Crop,
+                    error = painterResource(id = android.R.drawable.ic_menu_slideshow),
+                    fallback = painterResource(id = android.R.drawable.ic_menu_slideshow)
                 )
                 Box(
                     modifier = Modifier
@@ -254,16 +330,33 @@ fun VideoGridItem(
                         fontSize = 10.sp
                     )
                 }
-                IconButton(
-                    onClick = onFavoriteToggle,
-                    modifier = Modifier.align(Alignment.TopEnd)
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(4.dp)
                 ) {
-                    Icon(
-                        if (video.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                        contentDescription = null,
-                        tint = if (video.isFavorite) Color.Red else Color.White.copy(alpha = 0.7f),
-                        modifier = Modifier.size(20.dp)
-                    )
+                    IconButton(
+                        onClick = onFavoriteToggle,
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            if (video.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = null,
+                            tint = if (video.isFavorite) Color.Red else Color.White.copy(alpha = 0.7f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    IconButton(
+                        onClick = onDelete,
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Delete",
+                            tint = Color.White.copy(alpha = 0.7f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             }
             Column(modifier = Modifier.padding(8.dp)) {
